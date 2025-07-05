@@ -32,12 +32,12 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
 
+#include "config.h"
 #include <string.h>
 #include <stdint.h>
-
 #include "sha2.h"
+
 
 #define UNPACK32(x, str)                      \
 {                                             \
@@ -83,79 +83,145 @@ uint32_t sha256_k[64] =
              0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
              0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
+
 /* SHA-256 functions */
+#ifdef USE_OPENSSL_SHA_NI
 
-#ifdef USE_AVX2
-extern void sha256_rorx(const void *, uint32_t[8], uint64_t);
+	#include <openssl/evp.h>
 
-void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int block_nb)
-{
-	sha256_rorx(message, ctx->h, block_nb);
-}
+	void sha256_ni_transform(sha256_ctx *ctx, const unsigned char *message,
+													unsigned int block_nb)
+	{
+		EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+		const EVP_MD *md = EVP_sha256();
+
+		EVP_DigestInit_ex(mdctx, md, NULL);
+		EVP_DigestUpdate(mdctx, message, block_nb * 64);
+		EVP_DigestFinal_ex(mdctx, (unsigned char*)ctx->h, NULL);
+		EVP_MD_CTX_free(mdctx);
+	}
+	// Test: $ openssl speed -evp sha256
+
+#elif defined(USE_SHA_NI)
+
+	#include <immintrin.h>
+
+	void sha256_ni_transform(sha256_ctx *ctx, const unsigned char *message,
+													unsigned int block_nb)
+	{
+		uint32_t *state = ctx->h;
+		const uint8_t *data = message;
+
+		__m128i state0 = _mm_loadu_si128((__m128i*)&state[0]);
+		__m128i state1 = _mm_loadu_si128((__m128i*)&state[4]);
+
+		for (unsigned int i = 0; i < block_nb; i++) {
+
+			__m128i msg0 = _mm_loadu_si128((__m128i*)(data +  0));
+			__m128i msg1 = _mm_loadu_si128((__m128i*)(data + 16));
+			__m128i msg2 = _mm_loadu_si128((__m128i*)(data + 32));
+			__m128i msg3 = _mm_loadu_si128((__m128i*)(data + 48));
+
+			__m128i tmp = state0;
+			state0 = _mm_sha256rnds2_epu32(state0, state1, msg0);
+			state1 = _mm_sha256rnds2_epu32(state1, tmp, msg0);
+
+			msg0 = _mm_sha256msg1_epu32(msg0, msg1);
+			msg1 = _mm_sha256msg2_epu32(msg1, msg2);
+
+			tmp = state0;
+			state0 = _mm_sha256rnds2_epu32(state0, state1, msg1);
+			state1 = _mm_sha256rnds2_epu32(state1, tmp, msg1);
+
+			msg1 = _mm_sha256msg1_epu32(msg1, msg2);
+			msg2 = _mm_sha256msg2_epu32(msg2, msg3);
+
+			data += 64;
+		}
+
+		_mm_storeu_si128((__m128i*)&state[0], state0);
+		_mm_storeu_si128((__m128i*)&state[4], state1);
+	}
+
+#elif defined(USE_AVX2)
+
+	extern void sha256_rorx(const void *, uint32_t[8], uint64_t);
+	void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
+					   unsigned int block_nb)
+	{
+		sha256_rorx(message, ctx->h, block_nb);
+	}
+
 #elif defined(USE_AVX1)
-extern void sha256_avx(const unsigned char *, uint32_t[8], uint64_t);
 
-void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int block_nb)
-{
-	sha256_avx(message, ctx->h, block_nb);
-}
+	extern void sha256_avx(const unsigned char *, uint32_t[8], uint64_t);
+	void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
+					   unsigned int block_nb)
+	{
+		sha256_avx(message, ctx->h, block_nb);
+	}
+
 #elif defined(USE_SSE4)
-extern void sha256_sse4(const unsigned char *, uint32_t[8], uint64_t);
 
-void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int block_nb)
-{
-	sha256_sse4(message, ctx->h, block_nb);
-}
+	extern void sha256_sse4(const unsigned char *, uint32_t[8], uint64_t);
+	void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
+					   unsigned int block_nb)
+	{
+		sha256_sse4(message, ctx->h, block_nb);
+	}
+
 #else
-void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int block_nb)
-{
-    uint32_t w[64];
-    uint32_t wv[8];
-    uint32_t t1, t2;
-    const unsigned char *sub_block;
-    int i;
 
-    int j;
+	void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
+												unsigned int block_nb)
+	{
+		uint32_t w[64];
+		uint32_t wv[8];
+		uint32_t t1, t2;
+		const unsigned char *sub_block;
+		int i;
 
-    for (i = 0; i < (int) block_nb; i++) {
-        sub_block = message + (i << 6);
+		int j;
 
-        for (j = 0; j < 16; j++) {
-            PACK32(&sub_block[j << 2], &w[j]);
-        }
+		for (i = 0; i < (int) block_nb; i++) {
+			sub_block = message + (i << 6);
 
-        for (j = 16; j < 64; j++) {
-            SHA256_SCR(j);
-        }
+			for (j = 0; j < 16; j++) {
+				PACK32(&sub_block[j << 2], &w[j]);
+			}
 
-        for (j = 0; j < 8; j++) {
-            wv[j] = ctx->h[j];
-        }
+			for (j = 16; j < 64; j++) {
+				SHA256_SCR(j);
+			}
 
-        for (j = 0; j < 64; j++) {
-            t1 = wv[7] + SHA256_F2(wv[4]) + CH(wv[4], wv[5], wv[6])
-                + sha256_k[j] + w[j];
-            t2 = SHA256_F1(wv[0]) + MAJ(wv[0], wv[1], wv[2]);
-            wv[7] = wv[6];
-            wv[6] = wv[5];
-            wv[5] = wv[4];
-            wv[4] = wv[3] + t1;
-            wv[3] = wv[2];
-            wv[2] = wv[1];
-            wv[1] = wv[0];
-            wv[0] = t1 + t2;
-        }
+			for (j = 0; j < 8; j++) {
+				wv[j] = ctx->h[j];
+			}
 
-        for (j = 0; j < 8; j++) {
-            ctx->h[j] += wv[j];
-        }
-    }
-}
+			for (j = 0; j < 64; j++) {
+				t1 = wv[7] + SHA256_F2(wv[4]) + CH(wv[4], wv[5], wv[6])
+					+ sha256_k[j] + w[j];
+				t2 = SHA256_F1(wv[0]) + MAJ(wv[0], wv[1], wv[2]);
+				wv[7] = wv[6];
+				wv[6] = wv[5];
+				wv[5] = wv[4];
+				wv[4] = wv[3] + t1;
+				wv[3] = wv[2];
+				wv[2] = wv[1];
+				wv[1] = wv[0];
+				wv[0] = t1 + t2;
+			}
+
+			for (j = 0; j < 8; j++) {
+				ctx->h[j] += wv[j];
+			}
+		}
+	}
 #endif
+
+
+
+
 void sha256(const unsigned char *message, unsigned int len, unsigned char *digest)
 {
     sha256_ctx ctx;
@@ -203,8 +269,7 @@ void sha256_update(sha256_ctx *ctx, const unsigned char *message,
 
     rem_len = new_len % SHA256_BLOCK_SIZE;
 
-    memcpy(ctx->block, &shifted_message[block_nb << 6],
-           rem_len);
+    memcpy(ctx->block, &shifted_message[block_nb << 6], rem_len);
 
     ctx->len = rem_len;
     ctx->tot_len += (block_nb + 1) << 6;
@@ -218,8 +283,7 @@ void sha256_final(sha256_ctx *ctx, unsigned char *digest)
 
     int i;
 
-    block_nb = (1 + ((SHA256_BLOCK_SIZE - 9)
-                     < (ctx->len % SHA256_BLOCK_SIZE)));
+    block_nb = (1 + ((SHA256_BLOCK_SIZE - 9) < (ctx->len % SHA256_BLOCK_SIZE)));
 
     len_b = (ctx->tot_len + ctx->len) << 3;
     pm_len = block_nb << 6;

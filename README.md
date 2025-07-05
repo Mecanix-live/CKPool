@@ -1,6 +1,6 @@
 # CKPOOL - Updated CMake Version
 
-Lightweight multi-process, multi-threaded, modular stratum server for Linux.
+Lightweight multi-process, multi-threaded, bitcoin mining stratum server for Linux.
 
 ## Prerequisites
 
@@ -12,14 +12,13 @@ Lightweight multi-process, multi-threaded, modular stratum server for Linux.
 
 ### 1. Install dependencies:
 ```bash
-sudo apt install git build-essential cmake libjansson-dev libzmq3-dev yasm
+sudo apt install git build-essential cmake libssl-dev libjansson-dev libzmq3-dev yasm
 ```
 
 ### 2. Clone, Build and Install CKPool:
 ```bash
 cd ~
 git clone https://github.com/Mecanix-live/ckpool.git
-sudo chown -R $USER:$USER ckpool
 cd ckpool
 cmake -B build && cmake --build build --parallel
 sudo cmake --install build
