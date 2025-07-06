@@ -42,9 +42,9 @@ foreach(header
 	check_include_file(${header} HAVE_${HEADER_UPPER})
 endforeach()
 
+
 # Find OpenSSL
 find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
 
 # Required compiler flags to check for SHA-NI
 include(CheckCXXSourceRuns)
@@ -64,6 +64,7 @@ if(HAVE_SHA_NI)
 else()
     message(STATUS "SHA-NI not available: Falling back to OpenSSL SHA-256.")
 endif()
+
 
 # Required libraries
 find_library(JANSSON_LIB NAMES jansson libjansson)
@@ -88,8 +89,10 @@ if(NOT ZMQ_LIB)
 	message(FATAL_ERROR "Required library ZeroMQ (libzmq3-dev) not found")
 endif()
 
+
 # Subdirectory
 add_subdirectory(src)
+
 
 # Uninstall target
 set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE PATH "Install prefix for uninstall")

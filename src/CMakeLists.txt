@@ -10,7 +10,7 @@ add_library(ckpool_lib STATIC
 	sha2.c
 )
 
-# SHA-NI configuration
+# SHA-NI conf
 if(HAVE_SHA_NI)
 	target_compile_options(ckpool_lib PRIVATE -msha)
 	target_compile_definitions(ckpool_lib PRIVATE USE_SHA_NI)
@@ -33,6 +33,7 @@ target_link_libraries(ckpool
 	${M_LIB} 
 	${RT_LIB} 
 	${ZMQ_LIB}
+	OpenSSL::Crypto
 )
 
 # Installation
