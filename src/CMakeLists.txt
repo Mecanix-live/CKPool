@@ -12,7 +12,7 @@ add_library(ckpool_lib STATIC
 
 # SHA-NI conf
 if(HAVE_SHA_NI)
-	target_compile_options(ckpool_lib PRIVATE -msha)
+	target_compile_options(ckpool_lib PRIVATE -msha -msse4.1)
 	target_compile_definitions(ckpool_lib PRIVATE USE_SHA_NI)
 endif()
 
