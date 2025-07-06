@@ -1,6 +1,12 @@
-# CKPOOL - Updated CMake Version
+# CKPool - Next-Gen Mining Stratum Server
+**High-performance Bitcoin mining stratum server** featuring:
 
-Lightweight multi-process, multi-threaded, bitcoin mining stratum server for Linux.
+✓ **Upgraded Hardware-Accelerated SHA-256** (SHA-NI + OpenSSL EVP)  
+✓ **Modern build system** with CMake integration  
+✓ **Using latest/stable JSON/Jansson v2.14.1 library**
+✓ **Optimized multi-process architecture** for Linux
+
+*"The most efficient CKPool implementation to date"*
 
 ## Prerequisites
 
