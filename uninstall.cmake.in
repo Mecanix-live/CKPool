@@ -1,0 +1,27 @@
+
+# Read and verify manifest
+if(NOT EXISTS "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
+    message(FATAL_ERROR "CRITICAL SAFETY: Missing manifest file")
+endif()
+
+file(STRINGS "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt" files)
+list(LENGTH files file_count)
+message(STATUS "Found ${file_count} files to uninstall")
+
+set(removed_count 0)
+foreach(file ${files})
+    if(EXISTS "${file}")
+        message(STATUS "Removing: ${file}")
+        execute_process(
+            COMMAND @CMAKE_COMMAND@ -E remove "${file}"
+            RESULT_VARIABLE result
+        )
+        if(NOT "${result}" STREQUAL "0")
+            message(WARNING "Failed to remove: ${file}")
+        else()
+            math(EXPR removed_count "${removed_count}+1")
+        endif()
+    endif()
+endforeach()
+
+message(STATUS "\nUninstall complete. Removed ${removed_count}/${file_count} files.")
