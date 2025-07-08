@@ -21,8 +21,8 @@
 typedef struct {
 	union {
 		struct {
-			void *evp_ctx;  // EVP_MD_CTX* (opaque for header)
-			uint8_t _evp_padding[64]; // Reserve space for EVP
+			void *evp_ctx;
+			uint8_t _evp_padding[64];
 		};
 
 		struct {

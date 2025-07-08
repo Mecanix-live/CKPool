@@ -10,10 +10,8 @@ add_library(ckpool_lib STATIC
 	sha2.c
 )
 
-# SHA-NI conf
-if(HAVE_SHA_NI)
-	target_compile_options(ckpool_lib PRIVATE -msha -msse4.1)
-	target_compile_definitions(ckpool_lib PRIVATE USE_SHA_NI)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|i386|AMD64)")
+    target_compile_options(ckpool_lib PRIVATE -msha -msse4.1)
 endif()
 
 # Executables
@@ -33,7 +31,7 @@ target_link_libraries(ckpool
 	${M_LIB} 
 	${RT_LIB} 
 	${ZMQ_LIB}
-	OpenSSL::Crypto
+	${OpenSSL_LIB}
 )
 
 # Installation
