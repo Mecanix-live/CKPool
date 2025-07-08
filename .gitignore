@@ -1,0 +1,6 @@
+/mainnet.conf
+/logs/
+/build/
+*.c.bak
+*.h.bak
+
